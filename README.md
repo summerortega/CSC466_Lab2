@@ -3,5 +3,5 @@
 Summer Mariana Ortega
 sorteg16@calpoly.edu
 
-Diego Mendoza
-@calpoly.edu
+Diego Melgoza
+drmelgoz@calpoly.edu
