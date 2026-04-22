@@ -24,6 +24,4 @@ def read_csv(test_csv):
     #separate to y and X
     y = df.loc[:, class_var]
     X = df.drop(columns=class_var)
-
-
-    pass
+    tree.tree[""]
