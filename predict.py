@@ -1,0 +1,1 @@
+# use c45 predict to use decvision tree (read tree) to output predictions in json 
