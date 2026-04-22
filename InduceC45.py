@@ -11,18 +11,17 @@ import pandas as pd
 
 tree = C45()
 def read_csv(test_csv):
-    # read csv, including 1st 3
+    # read entire csv
     df = pd.read_csv(test_csv)
-    #isolate data types and class var y
-    #array
-    col_names = df.columns()
+    #parse new df to get types and class var
+    col_names = df.columns
     data_types = df.iloc[0]
     class_var = df.iloc[1][0]
     df = df.drop([0, 1])
-    #array
     data_types = data_types.replace({"0":"float64", r"^[1-9]$":"category"}, regex=True)
-    col_types = pd.Series(data_types, index=col_names)
-    #separate class var y and X
+    col_types = pd.Series(data_types, index=col_names).to_dict()
+    df = df.astype(col_types).reset_index(drop=True)
+    #separate to y and X
     y = df.loc[:, class_var]
     X = df.drop(columns=class_var)
 
