@@ -19,13 +19,13 @@ class C45:
             att = select_split_att(x, y, a, thresh)
             if len(att) == 0:
                 return {"leaf": {"decision": y.mode().values[0], "probability": 0}}
-            att_tree = {"value": att.index, "edges": []}
+            att_tree = {"var": att.index, "edges": []}
             for val in att:
                 x_filtered = x[x[att == val]]
                 y_filtered =  y[y[att == val]]
                 #how to attach dictionary value
                 new_tree = self.fit(x_filtered, y_filtered, a.drop(att), thresh)
-                att_node["edges"].append({"edge": {new_tree}})
+                att_node["edges"].append({"val": val, "node": {new_tree}})
             self.tree["node"] = att_tree
 
         # build the tree
