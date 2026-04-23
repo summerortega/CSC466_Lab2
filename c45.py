@@ -1,4 +1,6 @@
 import pandas as pd
+import numpy as np
+from numpy.ma.core import argmax
 
 
 class C45:
@@ -30,7 +32,7 @@ class C45:
                              "probability": 0}
                         }
             att_tree = {"node":
-                            {"var": att.index,
+                            {"var": att.index[0],
                              "edges": []
                             }
                         }
@@ -42,13 +44,13 @@ class C45:
 
                 att_tree["node"]["edges"].append({"val": val } | new_tree )
 
-            curr_tree["node"] = att_tree
-            return self.tree
+            curr_tree = att_tree
+        return curr_tree
 
         # build the tree
         # returns an object representing the best tree
         # c45 algo goes here
-        pass
+
 
 def predict(self, x_test):
     # takes array of data points we want predictions made for
@@ -64,5 +66,21 @@ def read_tree(self, filename):
     # reads the tree from a file
     # reads the JSON rendering of the tree, sets value = self.tree
     pass
+def select_split_att(x, y, a, thresh, mode):
+    metric = []
+    for att in a:
+        if mode == 1:
+            metric.append(infoGain(x, y, att))
+        elif mode == 0:
+            metric.append(infoGainRatio(x, y, att))
 
+    best = np.argmax(metric)
+    if metric[best] >= thresh:
+        return best
+    else:
+        return None
 
+def infoGain(x, y, att):
+    pass
+def infoGainRatio(x, y, att):
+    pass
