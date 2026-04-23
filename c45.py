@@ -11,22 +11,39 @@ class C45:
     # add optional input params with default vals
     # attrbutes is a
     def fit(self, x:pd.DataFrame, y:pd.Series, a:pd.DataFrame|pd.Series, thresh:float):
+        curr_tree = {}
         if x.shape[0] == 0:
-            return {"leaf": {"decision": y.mode().values[0], "probability":0}}
+            return {"leaf":
+                        {"decision": y.mode().values[0],
+                         "probability":0}
+                    }
         elif y.value_counts()[0] == y.shape[0]:
-            return {"leaf": {"decision": y.mode().values[0], "probability": 0}}
+            return {"leaf":
+                        {"decision": y.mode().values[0],
+                         "probability": 0}
+                    }
         else:
             att = select_split_att(x, y, a, thresh)
             if len(att) == 0:
-                return {"leaf": {"decision": y.mode().values[0], "probability": 0}}
-            att_tree = {"var": att.index, "edges": []}
+                return {"leaf":
+                            {"decision": y.mode().values[0],
+                             "probability": 0}
+                        }
+            att_tree = {"node":
+                            {"var": att.index,
+                             "edges": []
+                            }
+                        }
             for val in att:
                 x_filtered = x[x[att == val]]
                 y_filtered =  y[y[att == val]]
                 #how to attach dictionary value
                 new_tree = self.fit(x_filtered, y_filtered, a.drop(att), thresh)
-                att_node["edges"].append({"val": val, "node": {new_tree}})
-            self.tree["node"] = att_tree
+
+                att_tree["node"]["edges"].append({"val": val } | new_tree )
+
+            curr_tree["node"] = att_tree
+            return self.tree
 
         # build the tree
         # returns an object representing the best tree
