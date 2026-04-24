@@ -1,7 +1,5 @@
 import pandas as pd
 import numpy as np
-from numpy.ma.core import argmax
-
 
 class C45:
     def __init__(self, splitting_metric = 'igr', splitting_threshold = '0.05'):
@@ -11,7 +9,7 @@ class C45:
         pass
     # give params default vals
     # add optional input params with default vals
-    # attrbutes is a
+    # attributes is a
     def fit(self, x:pd.DataFrame, y:pd.Series, a:pd.DataFrame|pd.Series, thresh:float):
         curr_tree = {}
         if x.shape[0] == 0:
@@ -42,7 +40,12 @@ class C45:
                 #how to attach dictionary value
                 new_tree = self.fit(x_filtered, y_filtered, a.drop(att), thresh)
 
-                att_tree["node"]["edges"].append({"val": val } | new_tree )
+                if x[att].dtypes == 'category' :
+                    att_tree["node"]["edges"].append({"edge": {"val": val }} | new_tree )
+                elif x[att].dtypes == 'float64' :
+                    att_tree["node"]["edges"].append({"edge": {"val": val,
+                                                      "op": op}} | new_tree )
+                    # TODO: figure out how to determine op (greater than or less than)
 
             curr_tree = att_tree
         return curr_tree
@@ -81,6 +84,29 @@ def select_split_att(x, y, a, thresh, mode):
         return None
 
 def infoGain(x, y, att):
-    pass
+    unique = np.unique_counts(x[att])
+    counts = unique.counts
+    values = unique.values
+    djs = [y[x[att] == val] for val in values]
+    return np.sum([(dj.shape[0]/y.shape[0]) * entropy(dj) for dj in djs])
+
 def infoGainRatio(x, y, att):
-    pass
+    gain = infoGain(x, y, att)
+    unique = np.unique_counts(x[att])
+    values = unique.values
+    djs = [y[x[att] == val].shape[0] for val in values]
+    y_shape = y.shape[0]
+    den = [(dj/y_shape) * (np.log2((dj/y_shape))) for dj in djs]
+    return gain / (-1 * sum(den))
+
+def entropy (y):
+    if y.value_counts()[0] == y.shape[0]:
+        return 0
+    unique = np.unique_counts(y)
+    counts = unique.counts
+    total = counts.sum
+    calculations = [(counts[i] / total) * np.log2((counts[i] / total)) for i in range(len(counts))]
+
+    return -1 * sum(calculations)
+
+
