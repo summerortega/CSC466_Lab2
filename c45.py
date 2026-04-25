@@ -23,31 +23,44 @@ class C45:
                          "probability": 0}
                     }
         else:
-            att = select_split_att(x, y, a, thresh)
-            if len(att) == 0:
+            att, split_val = select_split_att(x, y, a, thresh, mode=self.splitting_metric)
+            if att is not None:
                 return {"leaf":
                             {"decision": y.mode().values[0],
                              "probability": 0}
                         }
-            att_tree = {"node":
-                            {"var": att.index[0],
-                             "edges": []
+            else:
+                att_tree = {"node":
+                                {"var": att,
+                                 "edges": []
+                                 }
                             }
-                        }
-            for val in att:
-                x_filtered = x[x[att == val]]
-                y_filtered =  y[y[att == val]]
-                #how to attach dictionary value
-                new_tree = self.fit(x_filtered, y_filtered, a.drop(att), thresh)
+                if split_val is None:
+                    # category
+                    for val in x[att]:
+                        x_filtered = x[x[att == val]]
+                        y_filtered =  y[y[att == val]]
+                        new_tree = self.fit(x_filtered, y_filtered, a.drop(att), thresh)
+                        att_tree["node"]["edges"].append({"edge": {"val": val }} | new_tree )
 
-                if x[att].dtypes == 'category' :
-                    att_tree["node"]["edges"].append({"edge": {"val": val }} | new_tree )
-                elif x[att].dtypes == 'float64' :
-                    att_tree["node"]["edges"].append({"edge": {"val": val,
-                                                      "op": op}} | new_tree )
-                    # TODO: figure out how to determine op (greater than or less than)
+                else:
+                    # numeric
+                    x_filtered_lt = x[x[att] <= split_val]
+                    y_filtered_lt = y[x[att] <= split_val]
+                    x_filtered_gt = x[x[att] > split_val]
+                    y_filtered_gt = y[x[att] > split_val]
 
-            curr_tree = att_tree
+                    #left child
+                    new_tree = self.fit(x_filtered_lt, y_filtered_lt, a.drop(att), thresh)
+                    att_tree["node"]["edges"].append({"edge": {"val": split_val,
+                                                               "op": '<='}} | new_tree)
+
+                    #right child
+                    new_tree = self.fit(x_filtered_gt, y_filtered_gt, a.drop(att), thresh)
+                    att_tree["node"]["edges"].append({"edge": {"val": split_val,
+                                                      "op": '>'}} | new_tree )
+
+                curr_tree = att_tree
         return curr_tree
 
         # build the tree
@@ -71,27 +84,54 @@ def read_tree(self, filename):
     pass
 def select_split_att(x, y, a, thresh, mode):
     metric = []
+    numeric_splits = {}
     for att in a:
-        if mode == 1:
-            metric.append(infoGain(x, y, att))
-        elif mode == 0:
-            metric.append(infoGainRatio(x, y, att))
-
+        if x[att].dtypes == 'category':
+            if mode == 1:
+                metric.append(info_gain(x, y, att))
+            elif mode == 0:
+                metric.append(info_gain_ratio(x, y, att))
+        elif x[att].dtypes == 'float64':
+            value, gain = (find_best_split(x, y, att, thresh))
+            #TODO info gain ration for numeric
+            numeric_splits[att] = value
+            metric.append(gain)
     best = np.argmax(metric)
     if metric[best] >= thresh:
-        return best
+        if a[best] in numeric_splits.keys():
+            return a[best], numeric_splits[a[best]]
+        else:
+            return a[best], None
     else:
         return None
 
-def infoGain(x, y, att):
+def find_best_split(x, y, att, thresh):
+    unique = np.unique(x[att])[:1]
+    gain = []
+    for val in unique:
+        x_filtered_lt = x[x[att] <= val]
+        y_filtered_lt = y[x[att] <= val]
+        x_filtered_gt = x[x[att] > val]
+        y_filtered_gt = y[x[att] > val]
+
+        entropy_binary_split = ((x_filtered_lt.shape[0]/x.shape[0] * entropy(y_filtered_lt)) +
+                  (x_filtered_gt.shape[0]/x.shape[0] * entropy(y_filtered_gt)))
+        gain.append(entropy(y) - entropy_binary_split)
+
+    best = np.argmax(gain)
+    if gain[best] >= thresh:
+        return unique[best], gain[best]
+    else:
+        return None
+
+def info_gain(x, y, att):
     unique = np.unique_counts(x[att])
-    counts = unique.counts
     values = unique.values
     djs = [y[x[att] == val] for val in values]
-    return np.sum([(dj.shape[0]/y.shape[0]) * entropy(dj) for dj in djs])
+    return float(np.sum([(dj.shape[0]/y.shape[0]) * entropy(dj) for dj in djs]))
 
-def infoGainRatio(x, y, att):
-    gain = infoGain(x, y, att)
+def info_gain_ratio(x, y, att):
+    gain = info_gain(x, y, att)
     unique = np.unique_counts(x[att])
     values = unique.values
     djs = [y[x[att] == val].shape[0] for val in values]
@@ -108,5 +148,6 @@ def entropy (y):
     calculations = [(counts[i] / total) * np.log2((counts[i] / total)) for i in range(len(counts))]
 
     return -1 * sum(calculations)
+
 
 
