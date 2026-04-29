@@ -6,7 +6,7 @@ def main(csv_path:str, save_file_path = None):
     x, y, a = read_csv(csv_path)
     new_tree = C45Tree(splitting_metric="ig")
     new_tree.fit(x, y, a, thresh=0.05)
-    print(json.dumps(new_tree.tree, indent=4))
+    print(json.dumps(new_tree.tree, indent=2))
 
 
 def read_csv(csv_path:str) -> tuple[pd.DataFrame, pd.Series, pd.Series]:
