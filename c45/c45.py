@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-class C45:
+class C45Tree:
     def __init__(self, splitting_metric = 'igr', splitting_threshold = '0.05'):
         self.splitting_metric = splitting_metric
         self.splitting_threshold = splitting_threshold
@@ -12,19 +12,23 @@ class C45:
     # attributes is a
     def fit(self, x:pd.DataFrame, y:pd.Series, a:pd.DataFrame|pd.Series, thresh:float):
         curr_tree = {}
-        if x.shape[0] == 0:
+        #Base Case 1: No Attributes Left to Split on
+        if a.shape[0] == 0:
             return {"leaf":
                         {"decision": y.mode().values[0],
                          "probability":0}
-                    }
-        elif y.value_counts()[0] == y.shape[0]:
+                  }
+        #Base Case 2: y (class attribute set) is homogenous
+        elif y.value_counts().iloc[0] == y.shape[0]:
             return {"leaf":
                         {"decision": y.mode().values[0],
                          "probability": 0}
                     }
         else:
             att, split_val = select_split_att(x, y, a, thresh, mode=self.splitting_metric)
-            if att is not None:
+            #Case 1: No attribute returned; Return a leaf
+            #TODO: compute probabilities
+            if not att:
                 return {"leaf":
                             {"decision": y.mode().values[0],
                              "probability": 0}
@@ -35,13 +39,14 @@ class C45:
                                  "edges": []
                                  }
                             }
-                if split_val is None:
+                if not split_val:
                     # category
-                    for val in x[att]:
-                        x_filtered = x[x[att == val]]
-                        y_filtered =  y[y[att == val]]
-                        new_tree = self.fit(x_filtered, y_filtered, a.drop(att), thresh)
-                        att_tree["node"]["edges"].append({"edge": {"val": val }} | new_tree )
+                    vals = x[att].unique()
+                    for val in vals:
+                        x_filtered = x[x[att] == val]
+                        y_filtered =  y[x[att] == val]
+                        new_tree = self.fit(x_filtered, y_filtered, a[a != att].reset_index(drop=True), thresh)
+                        att_tree["node"]["edges"].append({"edge": {"val": val } | new_tree })
 
                 else:
                     # numeric
@@ -61,6 +66,7 @@ class C45:
                                                       "op": '>'}} | new_tree )
 
                 curr_tree = att_tree
+        self.tree = curr_tree
         return curr_tree
 
         # build the tree
@@ -87,9 +93,9 @@ def select_split_att(x, y, a, thresh, mode):
     numeric_splits = {}
     for att in a:
         if x[att].dtypes == 'category':
-            if mode == 1:
+            if mode.lower() == 'ig':
                 metric.append(info_gain(x, y, att))
-            elif mode == 0:
+            elif mode.lower() == 'igr':
                 metric.append(info_gain_ratio(x, y, att))
         elif x[att].dtypes == 'float64':
             value, gain = (find_best_split(x, y, att, thresh))
@@ -127,8 +133,9 @@ def find_best_split(x, y, att, thresh):
 def info_gain(x, y, att):
     unique = np.unique_counts(x[att])
     values = unique.values
-    djs = [y[x[att] == val] for val in values]
-    return float(np.sum([(dj.shape[0]/y.shape[0]) * entropy(dj) for dj in djs]))
+    filtered_y_sets = [y[x[att] == val] for val in values]
+    entropy_split = np.sum([y_prime.shape[0]/y.shape[0] * entropy(y_prime) for y_prime in filtered_y_sets])
+    return float(entropy(y) - entropy_split)
 
 def info_gain_ratio(x, y, att):
     gain = info_gain(x, y, att)
@@ -140,14 +147,14 @@ def info_gain_ratio(x, y, att):
     return gain / (-1 * sum(den))
 
 def entropy (y):
-    if y.value_counts()[0] == y.shape[0]:
+    if y.value_counts().iloc[0] == y.shape[0]:
         return 0
     unique = np.unique_counts(y)
     counts = unique.counts
-    total = counts.sum
+    total = np.sum(counts)
     calculations = [(counts[i] / total) * np.log2((counts[i] / total)) for i in range(len(counts))]
 
-    return -1 * sum(calculations)
+    return -1 * np.sum(calculations)
 
 
 
