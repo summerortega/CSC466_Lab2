@@ -74,22 +74,35 @@ class C45Tree:
         # returns an object representing the best tree
         # c45 algo goes here
 
-    def predict(self, x_test):
-        # takes array of data points we want predictions made for
-        # returns array of predictions
-        pass
+    def get_prediction(self, x:pd.Series) -> str:
+        decision = None
+        curr_node = self.tree["node"]
+        while not decision:
+            curr_var = curr_node["var"]
+            edges =  {edge["edge"]["val"]: edge["edge"] for edge in curr_node["edges"]}
+            edge = edges[x[curr_var]]
+            node_keys = list(edge.keys())
+            if node_keys[1] == "node":
+                curr_node = edge["node"]
+            elif node_keys[1] == "leaf":
+                decision = edge["leaf"]["decision"]
+        return decision
+
+    def predict(self, x_test:pd.DataFrame) -> list[str]:
+        results = [self.get_prediction(x_test.iloc[i]) for i in range(len(x_test))]
+        return results
 
     def save_tree(self, save_file_path):
         # saves the tree to a file
         # creates/overwrited files, places it into JSON rendering of the tree
         with open(save_file_path, "w") as f:
             json.dump(self.tree, f, indent=2)
-        pass
 
-    def read_tree(self, filename):
+    def read_tree(self, load_file_path):
         # reads the tree from a file
         # reads the JSON rendering of the tree, sets value = self.tree
-        pass
+        with open(load_file_path, "r") as f:
+            self.tree = json.loads(f.read())
 
 def select_split_att(x, y, a, thresh, mode):
     metric = []
