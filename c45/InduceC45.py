@@ -6,7 +6,10 @@ def main(csv_path:str, save_file_path = None):
     x, y, a = read_csv(csv_path)
     new_tree = C45Tree(splitting_metric="ig")
     new_tree.fit(x, y, a, thresh=0.05)
-    print(json.dumps(new_tree.tree, indent=2))
+    if not save_file_path:
+        print(json.dumps(new_tree.tree, indent=2))
+    else:
+        new_tree.save_tree(save_file_path)
 
 
 def read_csv(csv_path:str) -> tuple[pd.DataFrame, pd.Series, pd.Series]:
@@ -27,4 +30,4 @@ def read_csv(csv_path:str) -> tuple[pd.DataFrame, pd.Series, pd.Series]:
     return x, y, pd.Series(col_names)
 
 if __name__ == "__main__":
-    main("yellow-small+adult-stretch.csv")
+    main("yellow-small+adult-stretch.csv", "myfile.txt")

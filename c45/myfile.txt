@@ -1,0 +1,120 @@
+{
+  "node": {
+    "var": "Color",
+    "edges": [
+      {
+        "edge": {
+          "val": "YELLOW",
+          "node": {
+            "var": "Size",
+            "edges": [
+              {
+                "edge": {
+                  "val": "SMALL",
+                  "leaf": {
+                    "decision": "T",
+                    "probability": 0
+                  }
+                }
+              },
+              {
+                "edge": {
+                  "val": "LARGE",
+                  "node": {
+                    "var": "Act",
+                    "edges": [
+                      {
+                        "edge": {
+                          "val": "STRETCH",
+                          "node": {
+                            "var": "Age",
+                            "edges": [
+                              {
+                                "edge": {
+                                  "val": "ADULT",
+                                  "leaf": {
+                                    "decision": "T",
+                                    "probability": 0
+                                  }
+                                }
+                              },
+                              {
+                                "edge": {
+                                  "val": "CHILD",
+                                  "leaf": {
+                                    "decision": "F",
+                                    "probability": 0
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "edge": {
+                          "val": "DIP",
+                          "leaf": {
+                            "decision": "F",
+                            "probability": 0
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "edge": {
+          "val": "PURPLE",
+          "node": {
+            "var": "Act",
+            "edges": [
+              {
+                "edge": {
+                  "val": "STRETCH",
+                  "node": {
+                    "var": "Age",
+                    "edges": [
+                      {
+                        "edge": {
+                          "val": "ADULT",
+                          "leaf": {
+                            "decision": "T",
+                            "probability": 0
+                          }
+                        }
+                      },
+                      {
+                        "edge": {
+                          "val": "CHILD",
+                          "leaf": {
+                            "decision": "F",
+                            "probability": 0
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "edge": {
+                  "val": "DIP",
+                  "leaf": {
+                    "decision": "F",
+                    "probability": 0
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

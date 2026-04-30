@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import json
 
 class C45Tree:
     def __init__(self, splitting_metric = 'igr', splitting_threshold = '0.05'):
@@ -73,21 +74,23 @@ class C45Tree:
         # returns an object representing the best tree
         # c45 algo goes here
 
+    def predict(self, x_test):
+        # takes array of data points we want predictions made for
+        # returns array of predictions
+        pass
 
-def predict(self, x_test):
-    # takes array of data points we want predictions made for
-    # returns array of predictions
-    pass
+    def save_tree(self, save_file_path):
+        # saves the tree to a file
+        # creates/overwrited files, places it into JSON rendering of the tree
+        with open(save_file_path, "w") as f:
+            json.dump(self.tree, f, indent=2)
+        pass
 
-def save_tree(self, filename):
-    # saves the tree to a file
-    # creates/overwrited files, places it into JSON rendering of the tree
-    pass
+    def read_tree(self, filename):
+        # reads the tree from a file
+        # reads the JSON rendering of the tree, sets value = self.tree
+        pass
 
-def read_tree(self, filename):
-    # reads the tree from a file
-    # reads the JSON rendering of the tree, sets value = self.tree
-    pass
 def select_split_att(x, y, a, thresh, mode):
     metric = []
     numeric_splits = {}
