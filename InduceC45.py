@@ -48,4 +48,4 @@ if __name__ == "__main__":
     elif len(args) == 2:
         main(args[0], args[1])
     else:
-        print("Usage: python3 predict.py <csv_path> [<save_file_path>]")
+        print("Usage: python3 InduceC45.py <csv_path> [<save_file_path>]")

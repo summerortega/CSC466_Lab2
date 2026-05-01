@@ -1,9 +1,11 @@
+from typing import Any
+
 import pandas as pd
 import numpy as np
 import json
 
 class C45Tree:
-    def __init__(self, splitting_metric = 'igr', splitting_threshold = '0.05'):
+    def __init__(self, splitting_metric = 'Ratio', splitting_threshold = '0.05'):
         self.splitting_metric = splitting_metric
         self.splitting_threshold = splitting_threshold
         self.tree = {}
@@ -39,10 +41,9 @@ class C45Tree:
             if not att:
                 decision = y.mode().values[0]
                 p = len(y[y == decision]) / len(y)
-                return {"leaf":
-                            {"decision": decision,
-                             "probability": p}
-                        }
+                leaf = {"leaf": {"decision": decision, "probability": p}}
+                self.tree = leaf
+                return leaf
             #Case 2: Split Attribute Found
             else:
                 att_tree = {"node":
@@ -66,10 +67,11 @@ class C45Tree:
                             #create a ghost path and leaf if necessary
                             decision = y.mode().values[0]
                             p = len(y[y == decision]) / len(y)
-                            return {"leaf":
+                            ghost =  {"leaf":
                                         {"decision": decision,
                                          "probability": p}
                                     }
+                            att_tree["node"]["edges"].append({"edge": {"value": val} | ghost})
                 else:
                     # numeric
                     x_filtered_lt = x[x[att] <= split_val]
@@ -103,19 +105,26 @@ class C45Tree:
 
     #return the prediction for a single observation
     def get_prediction(self, x:pd.Series) -> str:
+        if "leaf" in self.tree:
+            return self.tree["leaf"]["decision"]
         decision = None
         curr_node = self.tree["node"]
         while not decision:
             curr_var = curr_node["var"]
             edges =  {edge["edge"]["value"]: edge["edge"] for edge in curr_node["edges"]}
-            edge = edges[x[curr_var]]
+            edge = edges.get(x[curr_var])
+            if edge is None:
+                edge = curr_node["edges"][0]["edge"]
+                while "node" in edge:
+                    curr_node = edge["node"]
+                    edge = curr_node["edges"][0]["edge"]
+                return edge["leaf"]["decision"]
             node_keys = list(edge.keys())
             if node_keys[1] == "node":
                 curr_node = edge["node"]
             elif node_keys[1] == "leaf":
                 decision = edge["leaf"]["decision"]
         return decision
-
 
     #get the predictions for an entire set of observations
     def predict(self, x_test:pd.DataFrame) -> list[str]:
@@ -145,9 +154,9 @@ def select_split_att(x:pd.DataFrame, y:pd.Series, a:pd.Series, thresh:float, mod
     #get info-gain or info-gain-ratio.
     for att in a:
         if x[att].dtypes == 'category':
-            if mode.lower() == 'ig':
+            if mode == 'InfoGain':
                 metric.append(info_gain(x, y, att))
-            elif mode.lower() == 'igr':
+            elif mode == 'Ratio':
                 metric.append(info_gain_ratio(x, y, att))
         elif x[att].dtypes == 'float64':
             #numeric attributes choose metric in
@@ -158,6 +167,8 @@ def select_split_att(x:pd.DataFrame, y:pd.Series, a:pd.Series, thresh:float, mod
     #choose best metric result
     #return attribute name and
     #numeric split value as needed
+    if not metric:
+        return None, None
     best = np.argmax(metric)
     if metric[best] >= thresh:
         if a[best] in numeric_splits.keys():
@@ -181,12 +192,13 @@ def find_best_split(x:pd.DataFrame, y:pd.Series, att:str, mode:str) -> tuple[flo
 
         entropy_binary_split = ((x_filtered_lt.shape[0]/x.shape[0] * entropy(y_filtered_lt)) +
                   (x_filtered_gt.shape[0]/x.shape[0] * entropy(y_filtered_gt)))
-        if mode == "ig":
+        if mode == "InfoGain":
             results.append(entropy(y) - entropy_binary_split)
-        elif mode == "igr":
+        elif mode == "Ratio":
             gain = entropy(y) - entropy_binary_split
             results.append(info_gain_ratio_numeric(gain, x, y, att))
-
+    if not results:
+        return None, None
     best = np.argmax(results)
     return unique[best], results[best]
 
