@@ -7,10 +7,8 @@ class C45Tree:
         self.splitting_metric = splitting_metric
         self.splitting_threshold = splitting_threshold
         self.tree = {}
-        pass
-    # give params default vals
-    # add optional input params with default vals
-    # attributes is a
+
+
     def fit(self, x:pd.DataFrame, y:pd.Series, a:pd.DataFrame|pd.Series, thresh:float):
         curr_tree = {}
         #Base Case 1: No Attributes Left to Split on
@@ -82,9 +80,6 @@ class C45Tree:
         self.tree = curr_tree
         return curr_tree
 
-        # build the tree
-        # returns an object representing the best tree
-        # c45 algo goes here
 
     def get_prediction(self, x:pd.Series) -> str:
         decision = None
@@ -100,9 +95,11 @@ class C45Tree:
                 decision = edge["leaf"]["decision"]
         return decision
 
+
     def predict(self, x_test:pd.DataFrame) -> list[str]:
         results = [self.get_prediction(x_test.iloc[i]) for i in range(len(x_test))]
         return results
+
 
     def save_tree(self, save_file_path):
         # saves the tree to a file
@@ -110,11 +107,13 @@ class C45Tree:
         with open(save_file_path, "w") as f:
             json.dump(self.tree, f, indent=2)
 
+
     def read_tree(self, load_file_path):
         # reads the tree from a file
         # reads the JSON rendering of the tree, sets value = self.tree
         with open(load_file_path, "r") as f:
             self.tree = json.loads(f.read())
+
 
 def select_split_att(x, y, a, thresh, mode):
     metric = []
@@ -138,6 +137,7 @@ def select_split_att(x, y, a, thresh, mode):
     else:
         return None, None
 
+
 def find_best_split(x, y, att, mode):
     unique = np.unique(x[att])[1:]
     results = []
@@ -158,12 +158,14 @@ def find_best_split(x, y, att, mode):
     best = np.argmax(results)
     return unique[best], results[best]
 
+
 def info_gain(x, y, att):
     unique = np.unique_counts(x[att])
     values = unique.values
     filtered_y_sets = [y[x[att] == val] for val in values]
     entropy_split = np.sum([y_prime.shape[0]/y.shape[0] * entropy(y_prime) for y_prime in filtered_y_sets])
     return float(entropy(y) - entropy_split)
+
 
 def info_gain_ratio(x, y, att):
     gain = info_gain(x, y, att)
@@ -173,6 +175,7 @@ def info_gain_ratio(x, y, att):
     y_shape = y.shape[0]
     den = [(filtered_y/y_shape) * (np.log2((filtered_y/y_shape))) for filtered_y in filtered_y_shapes]
     return gain / (-1 * sum(den))
+
 
 def info_gain_ratio_numeric(gain, x, y, att):
     unique = np.unique_counts(x[att])
