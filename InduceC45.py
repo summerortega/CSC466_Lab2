@@ -3,17 +3,25 @@ import json
 import sys
 from c45 import C45Tree
 
-def main(csv_path:str, save_file_path:str = None):
+def main(csv_path:str, save_file_path:str = None) -> None:
+    #get training set x, class var y, and attribute series a
     x, y, a = read_csv(csv_path)
+    #instantiate tree
     new_tree = C45Tree(splitting_metric="igr")
+    #create new tree
     new_tree.fit(x, y, a, thresh=0.05)
     new_tree.tree = {"dataset": csv_path} | new_tree.tree
+    #save or output tree
     if not save_file_path:
         print(json.dumps(new_tree.tree, indent=2))
     else:
         new_tree.save_tree(save_file_path)
 
 
+#helper function that assists
+#in reading csv, properly typing
+#all columns, and identifying class
+#attribute
 def read_csv(csv_path:str) -> tuple[pd.DataFrame, pd.Series, pd.Series]:
     # read entire csv
     df = pd.read_csv(csv_path)

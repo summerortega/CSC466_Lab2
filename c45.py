@@ -9,7 +9,11 @@ class C45Tree:
         self.tree = {}
 
 
-    def fit(self, x:pd.DataFrame, y:pd.Series, a:pd.DataFrame|pd.Series, thresh:float):
+    #x: Training Set
+    #y: Training Ground Truth
+    #a: Attribute Series of x
+    #thresh: Algorithm Threshold
+    def fit(self, x:pd.DataFrame, y:pd.Series, a:pd.DataFrame|pd.Series, thresh:float) -> dict:
         curr_tree = {}
         #Base Case 1: No Attributes Left to Split on
         if a.shape[0] == 0:
@@ -19,7 +23,7 @@ class C45Tree:
                         {"decision": decision,
                          "probability":p}
                   }
-        #Base Case 2: y (class attribute set) is homogenous
+        #Base Case 2: y is homogenous
         elif y.value_counts().iloc[0] == y.shape[0]:
             decision = y.mode().values[0]
             p = len(y[y == decision]) / len(y)
@@ -28,6 +32,8 @@ class C45Tree:
                          "probability": p}
                     }
         else:
+            #select_split_att returns attribute name
+            #and numeric split value (if it exists)
             att, split_val = select_split_att(x, y, a, thresh, mode=self.splitting_metric)
             #Case 1: No attribute returned; Return a leaf
             if not att:
@@ -37,15 +43,19 @@ class C45Tree:
                             {"decision": decision,
                              "probability": p}
                         }
+            #Case 2: Split Attribute Found
             else:
                 att_tree = {"node":
                                 {"var": att,
                                  "edges": []
                                  }
                             }
+                #split_val being set to none
+                #implies this is a categorical attribute
                 if not split_val:
                     # category
                     vals = x[att].unique()
+                    #create a new tree for each possible value
                     for val in vals:
                         x_filtered = x[x[att] == val]
                         y_filtered =  y[x[att] == val]
@@ -53,6 +63,7 @@ class C45Tree:
                             new_tree = self.fit(x_filtered, y_filtered, a[a != att].reset_index(drop=True), thresh)
                             att_tree["node"]["edges"].append({"edge": {"value": val } | new_tree })
                         else:
+                            #create a ghost path and leaf if necessary
                             decision = y.mode().values[0]
                             p = len(y[y == decision]) / len(y)
                             return {"leaf":
@@ -66,6 +77,16 @@ class C45Tree:
                     x_filtered_gt = x[x[att] > split_val]
                     y_filtered_gt = y[x[att] > split_val]
 
+                    #if all data is located on one side of the split
+                    if x_filtered_gt.shape[0] == 0:
+                        decision = y.mode().values[0]
+                        p = len(y[y == decision]) / len(y)
+                        return {"leaf":
+                                    {"decision": decision,
+                                     "probability": p}
+                                }
+
+                    #else get left and right subtrees
                     #left child
                     new_tree = self.fit(x_filtered_lt, y_filtered_lt, a[a != att].reset_index(drop=True), thresh)
                     att_tree["node"]["edges"].append({"edge": {"value": split_val,
@@ -74,13 +95,13 @@ class C45Tree:
                     #right child
                     new_tree = self.fit(x_filtered_gt, y_filtered_gt, a[a != att].reset_index(drop=True), thresh)
                     att_tree["node"]["edges"].append({"edge": {"value": split_val,
-                                                      "op": '>'}} | new_tree )
+                                                                "op": '>'}} | new_tree )
 
                 curr_tree = att_tree
         self.tree = curr_tree
         return curr_tree
 
-
+    #return the prediction for a single observation
     def get_prediction(self, x:pd.Series) -> str:
         decision = None
         curr_node = self.tree["node"]
@@ -96,28 +117,32 @@ class C45Tree:
         return decision
 
 
+    #get the predictions for an entire set of observations
     def predict(self, x_test:pd.DataFrame) -> list[str]:
         results = [self.get_prediction(x_test.iloc[i]) for i in range(len(x_test))]
         return results
 
 
-    def save_tree(self, save_file_path):
-        # saves the tree to a file
-        # creates/overwrited files, places it into JSON rendering of the tree
+    #creates/overwrited file, places tree into file as JSON
+    #using JSON library
+    def save_tree(self, save_file_path:str) -> None:
         with open(save_file_path, "w") as f:
             json.dump(self.tree, f, indent=2)
 
 
-    def read_tree(self, load_file_path):
-        # reads the tree from a file
-        # reads the JSON rendering of the tree, sets value = self.tree
+    #reads the JSON rendering of the tree from file, sets self.tree = result
+    #using JSON library
+    def read_tree(self, load_file_path:str) -> None:
         with open(load_file_path, "r") as f:
-            self.tree = json.loads(f.read())
+            self.tree = json.load(f)
 
 
-def select_split_att(x, y, a, thresh, mode):
+#get splitting attribute from dataset
+def select_split_att(x:pd.DataFrame, y:pd.Series, a:pd.Series, thresh:float, mode:str) -> tuple[str|None, int|None]:
     metric = []
     numeric_splits = {}
+    #for every unique attribute in Dataset
+    #get info-gain or info-gain-ratio.
     for att in a:
         if x[att].dtypes == 'category':
             if mode.lower() == 'ig':
@@ -125,9 +150,14 @@ def select_split_att(x, y, a, thresh, mode):
             elif mode.lower() == 'igr':
                 metric.append(info_gain_ratio(x, y, att))
         elif x[att].dtypes == 'float64':
+            #numeric attributes choose metric in
+            #find_best_split function.
             value, gain = find_best_split(x, y, att, mode)
             numeric_splits[att] = value
             metric.append(gain)
+    #choose best metric result
+    #return attribute name and
+    #numeric split value as needed
     best = np.argmax(metric)
     if metric[best] >= thresh:
         if a[best] in numeric_splits.keys():
@@ -138,7 +168,9 @@ def select_split_att(x, y, a, thresh, mode):
         return None, None
 
 
-def find_best_split(x, y, att, mode):
+#get best numeric split value
+#based on chosen metric
+def find_best_split(x:pd.DataFrame, y:pd.Series, att:str, mode:str) -> tuple[float|None, float|None]:
     unique = np.unique(x[att])[1:]
     results = []
     for val in unique:
@@ -159,7 +191,7 @@ def find_best_split(x, y, att, mode):
     return unique[best], results[best]
 
 
-def info_gain(x, y, att):
+def info_gain(x:pd.DataFrame, y:pd.Series, att:str) -> float:
     unique = np.unique_counts(x[att])
     values = unique.values
     filtered_y_sets = [y[x[att] == val] for val in values]
@@ -167,7 +199,7 @@ def info_gain(x, y, att):
     return float(entropy(y) - entropy_split)
 
 
-def info_gain_ratio(x, y, att):
+def info_gain_ratio(x:pd.DataFrame, y:pd.Series, att:str) -> float:
     gain = info_gain(x, y, att)
     unique = np.unique_counts(x[att])
     values = unique.values
@@ -177,7 +209,9 @@ def info_gain_ratio(x, y, att):
     return gain / (-1 * sum(den))
 
 
-def info_gain_ratio_numeric(gain, x, y, att):
+#specially made info-gain-ratio function
+#for use with the find_best_split function
+def info_gain_ratio_numeric(gain:float, x:pd.DataFrame, y:pd.Series, att:str) -> float:
     unique = np.unique_counts(x[att])
     values = unique.values
     filtered_y_shapes = [y[x[att] == val].shape[0] for val in values]
@@ -186,7 +220,7 @@ def info_gain_ratio_numeric(gain, x, y, att):
     return gain / (-1 * sum(den))
 
 
-def entropy (y):
+def entropy(y:pd.Series) -> float:
     if y.value_counts().iloc[0] == y.shape[0]:
         return 0
     unique = np.unique_counts(y)

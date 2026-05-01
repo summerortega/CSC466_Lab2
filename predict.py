@@ -2,7 +2,8 @@ import sys
 import pandas as pd
 from c45 import C45Tree
 
-def main(csv_path:str, load_file_path:str = None, evalu:str = None):
+def main(csv_path:str, load_file_path:str = None, evalu:str = None) -> None:
+    # get training set x, class var y, and attribute series a
     x, y, a = read_csv(csv_path)
     new_tree = C45Tree(splitting_metric="ig")
     new_tree.read_tree(load_file_path)
@@ -22,6 +23,10 @@ def main(csv_path:str, load_file_path:str = None, evalu:str = None):
         print(f"Accuracy: {num_correct / total}")
 
 
+#helper function that assists
+#in reading csv, properly typing
+#all columns, and identifying class
+#attribute
 def read_csv(csv_path:str) -> tuple[pd.DataFrame, pd.Series, pd.Series]:
     # read entire csv
     df = pd.read_csv(csv_path)
