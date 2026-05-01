@@ -107,7 +107,7 @@ class C45Tree:
         curr_node = self.tree["node"]
         while not decision:
             curr_var = curr_node["var"]
-            edges =  {edge["edge"]["val"]: edge["edge"] for edge in curr_node["edges"]}
+            edges =  {edge["edge"]["value"]: edge["edge"] for edge in curr_node["edges"]}
             edge = edges[x[curr_var]]
             node_keys = list(edge.keys())
             if node_keys[1] == "node":

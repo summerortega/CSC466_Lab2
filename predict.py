@@ -1,8 +1,9 @@
 import sys
+import numpy as np
 import pandas as pd
 from c45 import C45Tree
 
-def main(csv_path:str, load_file_path:str = None, evalu:str = None) -> None:
+def main(csv_path:str, load_file_path:str, evalu:str = None) -> None:
     # get training set x, class var y, and attribute series a
     x, y, a = read_csv(csv_path)
     new_tree = C45Tree(splitting_metric="ig")
@@ -12,16 +13,37 @@ def main(csv_path:str, load_file_path:str = None, evalu:str = None) -> None:
         for result in results:
             print(result)
     else:
-        print(f"Results: {results}")
-        total = len(results)
-        print(f"# of records classified:{total}")
-        incorrect = y.compare(pd.Series(results))
-        num_correct = len(y) - len(incorrect)
-        num_incorrect = len(incorrect)
-        print(f"# correct: {num_correct}")
-        print(f"# incorrect: {num_incorrect}")
-        print(f"Accuracy: {num_correct / total}")
+        print_results(y, np.array(results))
 
+
+#used if eval parameter of main is set
+def print_results(y:pd.Series, results:np.ndarray) -> None:
+    print(f"Results: {results}")
+    total = len(results)
+    print(f"Total Records classified:{total}")
+    incorrect = y.compare(pd.Series(results))
+    num_correct = len(y) - len(incorrect)
+    num_incorrect = len(incorrect)
+    print(f"Correct: {num_correct}")
+    print(f"Incorrect: {num_incorrect}")
+    print(f"Accuracy: {num_correct / total}")
+    print("Confusion Matrix:")
+    confusion_matrix(y, results)
+
+
+#create confusion matrix between ground truth and predictions
+def confusion_matrix(y:pd.Series, results:np.ndarray) -> None:
+    matrix = {}
+    actual_values = np.array(y.unique())
+    for val in actual_values:
+        predictions = results[y == val]
+        matrix[val] = {i: len(predictions[predictions == i]) for i in actual_values}
+    print("    ", end="")
+    for val in matrix.keys():
+        print(val, end="  ")
+    print('')
+    for att in matrix:
+        print(f"{att}: {list(matrix[att].values())}")
 
 #helper function that assists
 #in reading csv, properly typing
