@@ -15,24 +15,29 @@ class C45Tree:
         curr_tree = {}
         #Base Case 1: No Attributes Left to Split on
         if a.shape[0] == 0:
+            decision = y.mode().values[0]
+            p = len(y[y == decision]) / len(y)
             return {"leaf":
-                        {"decision": y.mode().values[0],
-                         "probability":0}
+                        {"decision": decision,
+                         "probability":p}
                   }
         #Base Case 2: y (class attribute set) is homogenous
         elif y.value_counts().iloc[0] == y.shape[0]:
+            decision = y.mode().values[0]
+            p = len(y[y == decision]) / len(y)
             return {"leaf":
-                        {"decision": y.mode().values[0],
-                         "probability": 0}
+                        {"decision": decision,
+                         "probability": p}
                     }
         else:
             att, split_val = select_split_att(x, y, a, thresh, mode=self.splitting_metric)
             #Case 1: No attribute returned; Return a leaf
-            #TODO: compute probabilities
             if not att:
+                decision = y.mode().values[0]
+                p = len(y[y == decision]) / len(y)
                 return {"leaf":
-                            {"decision": y.mode().values[0],
-                             "probability": 0}
+                            {"decision": decision,
+                             "probability": p}
                         }
             else:
                 att_tree = {"node":
@@ -46,9 +51,16 @@ class C45Tree:
                     for val in vals:
                         x_filtered = x[x[att] == val]
                         y_filtered =  y[x[att] == val]
-                        new_tree = self.fit(x_filtered, y_filtered, a[a != att].reset_index(drop=True), thresh)
-                        att_tree["node"]["edges"].append({"edge": {"val": val } | new_tree })
-
+                        if x_filtered.shape[0] != 0:
+                            new_tree = self.fit(x_filtered, y_filtered, a[a != att].reset_index(drop=True), thresh)
+                            att_tree["node"]["edges"].append({"edge": {"value": val } | new_tree })
+                        else:
+                            decision = y.mode().values[0]
+                            p = len(y[y == decision]) / len(y)
+                            return {"leaf":
+                                        {"decision": decision,
+                                         "probability": p}
+                                    }
                 else:
                     # numeric
                     x_filtered_lt = x[x[att] <= split_val]
@@ -57,13 +69,13 @@ class C45Tree:
                     y_filtered_gt = y[x[att] > split_val]
 
                     #left child
-                    new_tree = self.fit(x_filtered_lt, y_filtered_lt, a.drop(att), thresh)
-                    att_tree["node"]["edges"].append({"edge": {"val": split_val,
+                    new_tree = self.fit(x_filtered_lt, y_filtered_lt, a[a != att].reset_index(drop=True), thresh)
+                    att_tree["node"]["edges"].append({"edge": {"value": split_val,
                                                                "op": '<='}} | new_tree)
 
                     #right child
-                    new_tree = self.fit(x_filtered_gt, y_filtered_gt, a.drop(att), thresh)
-                    att_tree["node"]["edges"].append({"edge": {"val": split_val,
+                    new_tree = self.fit(x_filtered_gt, y_filtered_gt, a[a != att].reset_index(drop=True), thresh)
+                    att_tree["node"]["edges"].append({"edge": {"value": split_val,
                                                       "op": '>'}} | new_tree )
 
                 curr_tree = att_tree
@@ -114,8 +126,7 @@ def select_split_att(x, y, a, thresh, mode):
             elif mode.lower() == 'igr':
                 metric.append(info_gain_ratio(x, y, att))
         elif x[att].dtypes == 'float64':
-            value, gain = (find_best_split(x, y, att, thresh))
-            #TODO info gain ration for numeric
+            value, gain = find_best_split(x, y, att, mode)
             numeric_splits[att] = value
             metric.append(gain)
     best = np.argmax(metric)
@@ -125,11 +136,11 @@ def select_split_att(x, y, a, thresh, mode):
         else:
             return a[best], None
     else:
-        return None
+        return None, None
 
-def find_best_split(x, y, att, thresh):
-    unique = np.unique(x[att])[:1]
-    gain = []
+def find_best_split(x, y, att, mode):
+    unique = np.unique(x[att])[1:]
+    results = []
     for val in unique:
         x_filtered_lt = x[x[att] <= val]
         y_filtered_lt = y[x[att] <= val]
@@ -138,13 +149,14 @@ def find_best_split(x, y, att, thresh):
 
         entropy_binary_split = ((x_filtered_lt.shape[0]/x.shape[0] * entropy(y_filtered_lt)) +
                   (x_filtered_gt.shape[0]/x.shape[0] * entropy(y_filtered_gt)))
-        gain.append(entropy(y) - entropy_binary_split)
+        if mode == "ig":
+            results.append(entropy(y) - entropy_binary_split)
+        elif mode == "igr":
+            gain = entropy(y) - entropy_binary_split
+            results.append(info_gain_ratio_numeric(gain, x, y, att))
 
-    best = np.argmax(gain)
-    if gain[best] >= thresh:
-        return unique[best], gain[best]
-    else:
-        return None
+    best = np.argmax(results)
+    return unique[best], results[best]
 
 def info_gain(x, y, att):
     unique = np.unique_counts(x[att])
@@ -157,10 +169,19 @@ def info_gain_ratio(x, y, att):
     gain = info_gain(x, y, att)
     unique = np.unique_counts(x[att])
     values = unique.values
-    djs = [y[x[att] == val].shape[0] for val in values]
+    filtered_y_shapes = [y[x[att] == val].shape[0] for val in values]
     y_shape = y.shape[0]
-    den = [(dj/y_shape) * (np.log2((dj/y_shape))) for dj in djs]
+    den = [(filtered_y/y_shape) * (np.log2((filtered_y/y_shape))) for filtered_y in filtered_y_shapes]
     return gain / (-1 * sum(den))
+
+def info_gain_ratio_numeric(gain, x, y, att):
+    unique = np.unique_counts(x[att])
+    values = unique.values
+    filtered_y_shapes = [y[x[att] == val].shape[0] for val in values]
+    y_shape = y.shape[0]
+    den = [(filtered_y / y_shape) * (np.log2((filtered_y / y_shape))) for filtered_y in filtered_y_shapes]
+    return gain / (-1 * sum(den))
+
 
 def entropy (y):
     if y.value_counts().iloc[0] == y.shape[0]:

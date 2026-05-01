@@ -1,5 +1,4 @@
 import sys
-
 import pandas as pd
 from c45 import C45Tree
 
