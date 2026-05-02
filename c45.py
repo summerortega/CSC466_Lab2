@@ -23,7 +23,7 @@ class C45Tree:
             p = len(y[y == decision]) / len(y)
             return {"leaf":
                         {"decision": decision,
-                         "probability":p}
+                         "p":p}
                   }
         #Base Case 2: y is homogenous
         elif y.value_counts().iloc[0] == y.shape[0]:
@@ -31,7 +31,7 @@ class C45Tree:
             p = len(y[y == decision]) / len(y)
             return {"leaf":
                         {"decision": decision,
-                         "probability": p}
+                         "p": p}
                     }
         else:
             #select_split_att returns attribute name
@@ -41,7 +41,7 @@ class C45Tree:
             if not att:
                 decision = y.mode().values[0]
                 p = len(y[y == decision]) / len(y)
-                leaf = {"leaf": {"decision": decision, "probability": p}}
+                leaf = {"leaf": {"decision": decision, "p": p}}
                 self.tree = leaf
                 return leaf
             #Case 2: Split Attribute Found
@@ -53,7 +53,7 @@ class C45Tree:
                             }
                 #split_val being set to none
                 #implies this is a categorical attribute
-                if not split_val:
+                if split_val is None:
                     # category
                     vals = x[att].unique()
                     #create a new tree for each possible value
@@ -69,7 +69,7 @@ class C45Tree:
                             p = len(y[y == decision]) / len(y)
                             ghost =  {"leaf":
                                         {"decision": decision,
-                                         "probability": p}
+                                         "p": p}
                                     }
                             att_tree["node"]["edges"].append({"edge": {"value": val} | ghost})
                 else:
@@ -85,19 +85,19 @@ class C45Tree:
                         p = len(y[y == decision]) / len(y)
                         return {"leaf":
                                     {"decision": decision,
-                                     "probability": p}
+                                     "p": p}
                                 }
 
                     #else get left and right subtrees
                     #left child
-                    new_tree = self.fit(x_filtered_lt, y_filtered_lt, a[a != att].reset_index(drop=True), thresh)
+                    new_tree = self.fit(x_filtered_lt, y_filtered_lt, a.reset_index(drop=True), thresh)
                     att_tree["node"]["edges"].append({"edge": {"value": split_val,
-                                                               "op": '<='}} | new_tree)
+                                                               "op": '<='} | new_tree})
 
                     #right child
-                    new_tree = self.fit(x_filtered_gt, y_filtered_gt, a[a != att].reset_index(drop=True), thresh)
+                    new_tree = self.fit(x_filtered_gt, y_filtered_gt, a.reset_index(drop=True), thresh)
                     att_tree["node"]["edges"].append({"edge": {"value": split_val,
-                                                                "op": '>'}} | new_tree )
+                                                               "op": '>'} | new_tree})
 
                 curr_tree = att_tree
         self.tree = curr_tree
@@ -111,18 +111,30 @@ class C45Tree:
         curr_node = self.tree["node"]
         while not decision:
             curr_var = curr_node["var"]
-            edges =  {edge["edge"]["value"]: edge["edge"] for edge in curr_node["edges"]}
-            edge = edges.get(x[curr_var])
+            edge = None
+            first_edge = curr_node["edges"][0]["edge"]
+
+            if "op" in first_edge:
+                for curr_edge in curr_node["edges"]:
+                    curr_edge = curr_edge["edge"]
+                    if curr_edge["op"] == "<=" and x[curr_var] <= curr_edge["value"]:
+                        edge = curr_edge
+                        break
+                    elif curr_edge["op"] == ">" and x[curr_var] > curr_edge["value"]:
+                        edge = curr_edge
+                        break
+            else:
+                edges =  {edge["edge"]["value"]: edge["edge"] for edge in curr_node["edges"]}
+                edge = edges.get(x[curr_var])
             if edge is None:
                 edge = curr_node["edges"][0]["edge"]
                 while "node" in edge:
                     curr_node = edge["node"]
                     edge = curr_node["edges"][0]["edge"]
                 return edge["leaf"]["decision"]
-            node_keys = list(edge.keys())
-            if node_keys[1] == "node":
+            if "node" in edge:
                 curr_node = edge["node"]
-            elif node_keys[1] == "leaf":
+            elif "leaf" in edge:
                 decision = edge["leaf"]["decision"]
         return decision
 
