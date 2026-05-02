@@ -198,7 +198,7 @@ def find_best_split(x:pd.DataFrame, y:pd.Series, att:str, mode:str) -> tuple[flo
             gain = entropy(y) - entropy_binary_split
             results.append(info_gain_ratio_numeric(gain, x, y, att))
     if not results:
-        return None, None
+        return None, -1
     best = np.argmax(results)
     return unique[best], results[best]
 
