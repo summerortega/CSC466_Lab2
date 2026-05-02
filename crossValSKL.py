@@ -2,13 +2,13 @@ import json
 import sys
 
 import numpy as np
-import matplotlib.pyplot as plt
+import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OrdinalEncoder
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import KFold
 from sklearn.metrics import accuracy_score, confusion_matrix
-from sklearn.tree import DecisionTreeClassifier, plot_tree, export_text
+from sklearn.tree import DecisionTreeClassifier, export_text
 
 from InduceC45 import read_csv
 
@@ -74,7 +74,10 @@ def main(csv_file, hyperparams_file, output_tree_file=None):
 
     print(f"Best Splitting Metric: \nInfoGain \nThreshold: {best_threshold}")
     print("Best Accuracy:", best_accuracy)
-    print("Best Confusion Matrix:\n", best_confusion_matrix)
+
+    labels = np.sort(y.unique())
+    cm_df = pd.DataFrame(best_confusion_matrix, index=labels, columns=labels)
+    print(cm_df.to_string())
 
     # Train on full dataset and save tree if output file is provided
     if output_tree_file:

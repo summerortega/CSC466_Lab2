@@ -2,6 +2,7 @@ import json
 import sys
 
 import numpy as np
+import pandas as pd
 from sklearn.model_selection import KFold
 from sklearn.metrics import accuracy_score, confusion_matrix
 from c45 import C45Tree
@@ -52,7 +53,10 @@ def main(csv_file, hyperparams_file, output_tree_file=None):
     # Output results
     print(f"Best Splitting Metric: \n{best_hyperparams[0]} \nThreshold: {best_hyperparams[1]}")
     print("Best Accuracy:", best_accuracy)
-    print("Best Confusion Matrix:\n", best_confusion_matrix)
+
+    labels = np.sort(y.unique())
+    cm_df = pd.DataFrame(best_confusion_matrix, index=labels, columns=labels)
+    print(cm_df.to_string())
 
     # Train on full dataset and save tree if output file is provided
     if output_tree_file:
